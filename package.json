@@ -1,0 +1,19 @@
+{
+  "name": "ssbot",
+  "version": "1.0.0",
+  "main": "index.js",
+  "author": "Mikael Brockman <mikael@brockman.se>",
+  "license": "MIT",
+  "dependencies": {
+    "cheerio": "^1.0.0-rc.10",
+    "firebase-admin": "^10.0.0",
+    "got": "^11.8.2",
+    "imagemin": "^7.0.1",
+    "imagemin-gifsicle": "^7.0.0"
+  },
+  "devDependencies": {
+    "@types/imagemin": "^8.0.0",
+    "@types/imagemin-gifsicle": "^7.0.1",
+    "typescript": "^4.4.4"
+  }
+}
