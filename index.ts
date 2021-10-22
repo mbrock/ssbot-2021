@@ -10,10 +10,7 @@ import * as path from "path"
 
 import * as firebaseAdmin from "firebase-admin"
 
-const serviceAccount = require("./firebase-secret.json")
-
 firebaseAdmin.initializeApp({
-  credential: firebaseAdmin.credential.cert(serviceAccount),
   databaseURL: "https://ssbot2021.firebaseio.com"
 })
 
@@ -70,7 +67,7 @@ async function parseProduct(suffix: string) {
     imgurls,
     message,
     table: objectFromKeyValuePairs(table),
-    price: $(".ads_price#tdo_8").text(),
+    price: $(".ads_price#tdo_8").text().trim() || null,
     coords: mapLinkCoords($("#mnu_map").attr("onclick"))
   }
 
@@ -102,25 +99,49 @@ async function download(tmpdir: string, url: string) {
 //   return gif
 // }
 
+
+
+// Example: "/foo/bar/baz.html" -> { collection: "foo_bar", id: "baz" }
+function parsePath(path: string) {
+  const parts = path.split("/")
+  const id = parts.pop().replace(/\.html$/, "")
+  const collection = parts.slice(1).join("_")
+  return { collection, id }
+}
+
+async function pmap<T, R>(arr: T[], fn: (item: T) => Promise<R>) {
+  const promises = arr.map(fn)
+  return await Promise.all(promises)
+}
+
+async function getCollections() {
+  const collections = await db.collection("ss").listDocuments()
+  return collections.map(d => d.id)
+}
+
 async function main() {
+  const collections = await getCollections()
+  for (const collection of collections) {
+    const items = await db.collection(`ss/${collection}/items`).get()
+    console.log(items.docs.map(d => d.data()))
+  }
+}
+
+async function main2() {
   for (const url of scrapeTargets) {
     console.log(`Scraping ${url}`)
 
     const batch = db.batch()
-
     const links = await getProductLinks(url)
 
     for (const link of links) {
+      const { collection, id } = parsePath(link.replace("/msg/lv", ""))
+      console.log(`ss/${collection}/items/${id}`)
+
       const data = await parseProduct(link)
-      console.log(link, data)
+      console.log(data)
 
-      const [sub, id] = link
-        .replace("/msg/lv/", "")
-        .replace(/\//g, "_")
-        .replace(/_([^_]*?)\.html$/, "/$1")
-        .split("/")
-
-      batch.set(db.collection(sub).doc(id), data)
+      batch.set(db.collection(`ss/${collection}/items`).doc(id), data)
     }
 
     console.log("Committing")
