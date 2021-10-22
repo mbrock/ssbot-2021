@@ -28,7 +28,9 @@ async function get(url: string): Promise<CheerioAPI> {
 
 const scrapeTargets = [
   "https://www.ss.com/lv/real-estate/flats/riga/centre/hand_over",
-  "https://www.ss.com/lv/real-estate/flats/kuldiga-and-reg/kuldiga/hand_over"
+  "https://www.ss.com/lv/real-estate/flats/kuldiga-and-reg/kuldiga/hand_over",
+  "https://www.ss.com/lv/transport/cars/volkswagen/caddy/",
+  "https://www.ss.lv/lv/home-stuff/furniture-interior/tables/riga_f/"
 ]
 
 async function getProductLinks(url: string) {
@@ -36,7 +38,7 @@ async function getProductLinks(url: string) {
 
   const links = $(".msga2 a").toArray().map(a => $(a).attr("href"))
 
-  return links
+  return links.filter(link => link.match(/\.html$/))
 }
 
 function objectFromKeyValuePairs(pairs: string[][]) {
@@ -57,14 +59,18 @@ async function parseProduct(suffix: string) {
   const table =
     $(".ads_opt_name").toArray().map(a => [
       $(a).text().replace(":", ""),
-      $(a).next().text().replace(" [Karte]", "")
-    ])
+      $(a).next().text().replace(" [Karte]", "").trim()
+    ]).filter(([k, v]) => !v.startsWith("Parādīt"))
+
+  const message =
+    $("#msg_div_msg").first().contents().filter((_, x) => x.type === "text").text().trim()
 
   const data = {
     url,
     imgurls,
+    message,
     table: objectFromKeyValuePairs(table),
-    price: $(".ads_price").text(),
+    price: $(".ads_price#tdo_8").text(),
     coords: mapLinkCoords($("#mnu_map").attr("onclick"))
   }
 
@@ -108,7 +114,13 @@ async function main() {
       const data = await parseProduct(link)
       console.log(link, data)
 
-      batch.set(db.collection("items").doc(link), data)
+      const [sub, id] = link
+        .replace("/msg/lv/", "")
+        .replace(/\//g, "_")
+        .replace(/_([^_]*?)\.html$/, "/$1")
+        .split("/")
+
+      batch.set(db.collection(sub).doc(id), data)
     }
 
     console.log("Committing")
